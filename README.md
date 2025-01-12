@@ -46,6 +46,60 @@ npm start
 !setup
 ```
 
+## Running as a Service
+
+### Using Systemd (Linux)
+
+1. Edit the service file path in `discord-crawler.service`:
+```bash
+WorkingDirectory=/path/to/Discord Crawler
+User=YOUR_USERNAME
+```
+
+2. Copy the service file to systemd:
+```bash
+sudo cp discord-crawler.service /etc/systemd/system/
+sudo systemctl daemon-reload
+```
+
+3. Start the service:
+```bash
+sudo systemctl start discord-crawler
+```
+
+4. Enable auto-start on boot:
+```bash
+sudo systemctl enable discord-crawler
+```
+
+5. Check status:
+```bash
+sudo systemctl status discord-crawler
+```
+
+### Using PM2 (Cross-platform)
+
+1. Install PM2 globally:
+```bash
+npm install -g pm2
+```
+
+2. Start the bot:
+```bash
+npm run pm2:start
+```
+
+3. Other PM2 commands:
+- Stop: `npm run pm2:stop`
+- Restart: `npm run pm2:restart`
+- View logs: `npm run pm2:logs`
+
+4. Enable PM2 startup:
+```bash
+pm2 startup
+pm2 save
+```
+
 ## Configuration
 
 The `!setup` command will guide you through:

@@ -71,8 +71,13 @@ const client = new Client({
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
+    // Check if message.member is available
+    if (!message.guild || !message.member) {
+        return message.reply('Could not retrieve member information.');
+    }
+
     if (message.content.toLowerCase() === '!setup') {
-        if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
+        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
             message.reply('You need administrator permissions to run this command.');
             return;
         }
@@ -235,22 +240,6 @@ client.on('messageDelete', async (message) => {
         if (config.destinationChannel) {
             const destChannel = client.channels.cache.get(config.destinationChannel);
             if (destChannel) {
-                try {
-                    await destChannel.permissionOverwrites.set([
-                        {
-                            id: message.guild.roles.everyone.id,
-                            deny: [PermissionFlagsBits.ViewChannel]
-                        },
-                        {
-                            id: message.guild.id,
-                            allow: [PermissionFlagsBits.ViewChannel],
-                            type: 0
-                        }
-                    ]);
-                } catch (error) {
-                    console.error('Permission setup error:', error);
-                }
-
                 destChannel.send(`🗑️ **Message Deleted**\n**Channel:** ${deletionData.sourceChannel}\n**User:** ${deletionData.username}\n**Deleted Message:** ${deletionData.message}`);
             }
         }
@@ -258,6 +247,7 @@ client.on('messageDelete', async (message) => {
         console.log('Message deleted:', deletionData);
     }
 });
+
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
