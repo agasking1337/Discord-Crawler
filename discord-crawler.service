@@ -1,0 +1,17 @@
+[Unit]
+Description=Discord Channel Monitor Bot
+After=network.target
+
+[Service]
+Type=simple
+User=rubin
+WorkingDirectory=/home/rubin/Discord Crawler
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=discord-crawler
+
+[Install]
+WantedBy=multi-user.target

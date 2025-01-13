@@ -168,6 +168,15 @@ client.on('messageCreate', async (message) => {
                     return;
                 }
 
+                // Check if bot has permission to send messages in the destination channel
+                const botPermissions = destChannel.permissionsFor(client.user);
+                if (!botPermissions.has(PermissionFlagsBits.SendMessages)) {
+                    message.channel.send('❌ Error: Bot does not have permission to send messages in the destination channel. Please adjust channel permissions and try again.');
+                    config = oldConfig;  // Restore old config
+                    saveConfig(config);  // Save the restored config
+                    return;
+                }
+
                 config.destinationChannel = destChannel.id;
                 
                 if (saveConfig(config)) {
@@ -247,7 +256,6 @@ client.on('messageDelete', async (message) => {
         console.log('Message deleted:', deletionData);
     }
 });
-
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
