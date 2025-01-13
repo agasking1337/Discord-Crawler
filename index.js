@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, ChannelType, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, ChannelType, PermissionFlagsBits, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -222,8 +222,25 @@ client.on('messageCreate', async (message) => {
         if (config.destinationChannel) {
             const destChannel = client.channels.cache.get(config.destinationChannel);
             if (destChannel) {
-                await destChannel.send(`**Channel:** ${userData.sourceChannel}\n**User:** ${userData.username}\n**Message:** ${userData.message}`);
-                console.log('Message forwarded to destination channel');
+                // Check if we have permission to send messages without modifying channel permissions
+                const botPermissions = destChannel.permissionsFor(client.user);
+                if (!botPermissions.has(PermissionFlagsBits.SendMessages)) {
+                    console.log('Bot does not have permission to send messages in destination channel');
+                    return;
+                }
+                
+                // Use preserveChannelPermissions to maintain original permissions
+                await preserveChannelPermissions(destChannel, async () => {
+                    try {
+                        await destChannel.send({
+                            content: `**Channel:** ${userData.sourceChannel}\n**User:** ${userData.username}\n**Message:** ${userData.message}`,
+                            allowedMentions: { parse: [] }
+                        });
+                        console.log('Message forwarded to destination channel');
+                    } catch (error) {
+                        console.error('Error sending message to destination channel:', error);
+                    }
+                });
             } else {
                 console.log('Destination channel not found:', config.destinationChannel);
             }
@@ -233,11 +250,35 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+// Add helper function to preserve and restore channel permissions
+async function preserveChannelPermissions(channel, operation) {
+    // Store original permissions
+    const originalPermissions = channel.permissionOverwrites.cache.clone();
+    
+    try {
+        // Perform the operation
+        await operation();
+    } finally {
+        // Restore original permissions
+        try {
+            await channel.permissionOverwrites.set(originalPermissions);
+        } catch (error) {
+            console.error('Error restoring channel permissions:', error);
+        }
+    }
+}
+
 // Add message deletion event handler
 client.on('messageDelete', async (message) => {
     if (message.author?.bot) return;
     
     if (config.sourceChannels.has(message.channelId)) {
+        // First check if we can access the channel and its properties
+        if (!message.guild || !message.channel) {
+            console.log('Cannot access message guild or channel');
+            return;
+        }
+
         const deletionData = {
             username: message.author?.username || 'Unknown User',
             userId: message.author?.id || 'Unknown ID',
@@ -249,11 +290,31 @@ client.on('messageDelete', async (message) => {
         if (config.destinationChannel) {
             const destChannel = client.channels.cache.get(config.destinationChannel);
             if (destChannel) {
-                destChannel.send(`🗑️ **Message Deleted**\n**Channel:** ${deletionData.sourceChannel}\n**User:** ${deletionData.username}\n**Deleted Message:** ${deletionData.message}`);
+                // Verify we have the required permissions without modifying anything
+                const botPermissions = destChannel.permissionsFor(client.user);
+                if (!botPermissions?.has(PermissionFlagsBits.SendMessages)) {
+                    console.log('Bot does not have permission to send messages in destination channel');
+                    return;
+                }
+
+                // Use preserveChannelPermissions to maintain original permissions
+                await preserveChannelPermissions(destChannel, async () => {
+                    try {
+                        await destChannel.send({
+                            content: `🗑️ **Message Deleted**\n**Channel:** ${deletionData.sourceChannel}\n**User:** ${deletionData.username}\n**Deleted Message:** ${deletionData.message}`,
+                            allowedMentions: { parse: [] }
+                        });
+                        console.log('Deletion notification sent successfully');
+                    } catch (error) {
+                        console.error('Failed to send deletion notification:', error);
+                    }
+                });
+            } else {
+                console.log('Destination channel not found:', config.destinationChannel);
             }
         }
 
-        console.log('Message deleted:', deletionData);
+        console.log('Message deletion processed:', deletionData);
     }
 });
 
