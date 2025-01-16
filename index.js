@@ -210,6 +210,10 @@ client.on('messageCreate', async (message) => {
 
     // Handle monitored channels
     if (config.sourceChannels.has(message.channelId)) {
+        // Prevent forwarding messages from the destination channel to avoid loops
+        if (message.channelId === config.destinationChannel) {
+            return;
+        }
         console.log('Processing message from monitored channel');
         const userData = {
             username: message.author.username,
@@ -232,8 +236,29 @@ client.on('messageCreate', async (message) => {
                 // Use preserveChannelPermissions to maintain original permissions
                 await preserveChannelPermissions(destChannel, async () => {
                     try {
+                        // Create message content
+                        let messageContent = `**Channel:** ${userData.sourceChannel}\n**User:** ${userData.username}`;
+                        
+                        // Add message content if it exists
+                        if (message.content) {
+                            messageContent += `\n**Message:** ${userData.message}`;
+                        }
+                        
+                        // Handle attachments
+                        if (message.attachments.size > 0) {
+                            messageContent += '\n**Attachments:**';
+                            message.attachments.forEach(attachment => {
+                                messageContent += `\n${attachment.url}`;
+                            });
+                        }
+
+                        // Handle embeds
+                        if (message.embeds.length > 0) {
+                            messageContent += '\n**Contains embeds**';
+                        }
+
                         await destChannel.send({
-                            content: `**Channel:** ${userData.sourceChannel}\n**User:** ${userData.username}\n**Message:** ${userData.message}`,
+                            content: messageContent,
                             allowedMentions: { parse: [] }
                         });
                         console.log('Message forwarded to destination channel');
